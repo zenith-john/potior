@@ -153,14 +153,7 @@ export default {
 
       return true
     },
-    displayNumber (num: number) {
-      if (num == 0) {
-        return ''
-      }
-      else {
-        return `${num}`
-      }
-    },
+
     findPossible(row: number, col: number) {
       let ret = [1, 2, 3, 4, 5, 6, 7, 8, 9];
       for (let i = 0; i < 9; i+=1) {
@@ -242,7 +235,7 @@ export default {
 
 <style scoped>
 .sudoku {
-  width: 100%; max-width: 540px;
+  width: 100%; max-width: 640px;
   margin: 0.5rem auto;
 
   font-family: Arial, Helvetica, sans-serif;
