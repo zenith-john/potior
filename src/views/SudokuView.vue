@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import Sudoku from '../components/Sudoku.vue'
+import SudokuComp from '../components/SudokuComp.vue'
 </script>
 
 <template>
-  <Sudoku />
+  <SudokuComp />
 </template>
 
-<style>
-</style>
+<style></style>

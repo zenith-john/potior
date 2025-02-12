@@ -21,6 +21,11 @@ const router = createRouter({
       path: '/binary',
       name: 'Binary',
       component: () => import('../views/BinaryView.vue'),
+    },
+    {
+      path: '/unicode',
+      name: 'Unicode',
+      component: () => import('../views/UnicodeView.vue'),
     }
   ],
 })

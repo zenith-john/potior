@@ -9,6 +9,7 @@ import { RouterLink, RouterView } from 'vue-router'
         <RouterLink to="/">Home</RouterLink>
         <RouterLink to="/sudoku">Sudoku</RouterLink>
         <RouterLink to="/binary">Binary</RouterLink>
+        <RouterLink to="/unicode">Unicode</RouterLink>
       </nav>
     </div>
   </header>

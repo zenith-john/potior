@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import BinaryComp from '../components/BinaryComp.vue'
+import UnicodeComp from '../components/UnicodeComp.vue'
 </script>
 
 <template>
-  <BinaryComp />
+    <UnicodeComp />
 </template>
 
 <style></style>
