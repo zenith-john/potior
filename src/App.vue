@@ -10,6 +10,7 @@ import { RouterLink, RouterView } from 'vue-router'
         <RouterLink to="/sudoku">Sudoku</RouterLink>
         <RouterLink to="/binary">Binary</RouterLink>
         <RouterLink to="/unicode">Unicode</RouterLink>
+        <RouterLink to="/chinese">Chinese</RouterLink>
       </nav>
     </div>
   </header>

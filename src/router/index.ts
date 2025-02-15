@@ -26,6 +26,11 @@ const router = createRouter({
       path: '/unicode',
       name: 'Unicode',
       component: () => import('../views/UnicodeView.vue'),
+    },
+    {
+      path: '/chinese',
+      name: 'Chinese',
+      component: () => import('../views/ChineseView.vue'),
     }
   ],
 })
