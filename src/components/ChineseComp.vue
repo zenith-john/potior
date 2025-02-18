@@ -1,10 +1,28 @@
 <script lang="ts">
+
+function replaceAt(str: string, index: number, replacement: string) {
+  if (index >= str.length || index < 0) {
+    return str; // Return the original string if the index is out of bounds
+  }
+  return str.substring(0, index) + replacement + str.substring(index + 1);
+}
+
+type CharConstrain = {
+  pronounce: RegExp | null;
+  strokes: number | null;
+}
+
+type CharRule = string | CharConstrain;
+
 export default {
   data() {
     return {
       text: '',
       words: [] as string[],
-      word_data: '',
+      word_data: [] as string[],
+      rules: [] as CharRule[],
+      dict: {} as { [key: string]: { [key: string]: any } },
+      has_more: false
     }
   },
   mounted() {
@@ -14,28 +32,47 @@ export default {
       }
       return response.text();
     }).then(data => {
-      this.word_data = data;
+      this.word_data = data.split(/\s/);
       console.log("Word data loaded!");
+    });
+
+    fetch('char.json').then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      return response.text();
+    }).then(data => {
+      let dat = JSON.parse(data);
+      for (let i in dat) {
+        for (let j in dat[i].pinyin) {
+          dat[i].pinyin[j] = this.convertPronouceChar(dat[i].pinyin[j]);
+        }
+        this.dict[dat[i].char] = dat[i];
+      }
+      console.log("Character data loaded!");
     });
   },
   computed: {
-
   },
   methods: {
     parse(text: string) {
-      let reg = /{[\s]*([a-z_*]*[0-4]?)([\s]+[\d]+)?[\s]*}/g;
+      let reg = /[^\x00-\x7F]|{[\s]*([a-z_*]*[0-4]?)([\s]+[\d]+)?[\s]*}/g;
       let matches = text.matchAll(reg);
-      let newReg = '';
-      let pronouciation = '';
-      let numbers = '';
-      newReg += '^(';
+      this.rules = [];
       for (let match of matches) {
-        newReg += '.';
-        pronouciation += this.convertPronouce(match[1]);
-        numbers += ' ' + this.convertNumber(match[2]);
+        this.rules.push(this.matchToRule(match));
       }
-      newReg += ') ' + pronouciation + numbers;
-      return newReg;
+      console.log(this.rules.length);
+      return;
+    },
+    matchToRule(match: RegExpExecArray) {
+      if (match[1] == undefined) return match[0];
+      else {
+        return {
+          pronounce: new RegExp(this.convertPronouce(match[1])),
+          strokes: match[2] == undefined ? null : parseInt(match[2]),
+        } as CharConstrain;
+      }
     },
     convertPronouce(text: string) {
       let ret = text;
@@ -44,34 +81,117 @@ export default {
       }
       ret = ret.replace(/\*/g, ".*");
       ret = ret.replace(/_/g, ".");
-      return ret;
-    },
-    convertNumber(text: string) {
-      if (text == null || text.match(/[\s]+$/) != null) {
-        return "[\\d]+";
-      }
-      else {
-        let num = text.match(/[\d]+/);
-        if (num == null)
-          return "";
-        else return num[0];
-      }
+      return "^" + ret + "$";
     },
     searchWords() {
-      let regex = new RegExp(this.parse(this.text), 'gm');
-      let matches = this.word_data.matchAll(regex);
-      let ret: string[] = [];
+      this.parse(this.text);
+      this.words = [];
+      this.has_more = false;
       let count = 0;
-      let shown: { [key: string]: boolean } = {};
-      for (let match of matches) {
-        if (!(match[1] in shown)) {
-          ret.push(match[1]);
-          shown[match[1]] = true;
+      for (let str of this.word_data) {
+        if (this.isValidatedWord(str)) {
+          if (count >= 100) {
+            this.has_more = true;
+            break;
+          }
+          this.words.push(str);
+          console.log(str.length);
           count++;
-          if (count > 100) break;
         }
       }
-      this.words = ret;
+    },
+    convertPronouceChar(str: string) {
+      let strs = str.split(" ");
+      if (strs.length > 1) {
+        let ret = '';
+        for (let i in strs) {
+          ret += this.convertPronouce(strs[i]);
+        }
+        return ret;
+      }
+      let ret = str;
+      let dict = {
+        'ā': ['a', '1'],
+        'á': ['a', '2'],
+        'ǎ': ['a', '3'],
+        'à': ['a', '4'],
+        'ō': ['o', '1'],
+        'ó': ['o', '2'],
+        'ǒ': ['o', '3'],
+        'ò': ['o', '4'],
+        'ē': ['e', '1'],
+        'é': ['e', '2'],
+        'ě': ['e', '3'],
+        'è': ['e', '4'],
+        'ī': ['i', '1'],
+        'í': ['i', '2'],
+        'ǐ': ['i', '3'],
+        'ì': ['i', '4'],
+        'ū': ['u', '1'],
+        'ú': ['u', '2'],
+        'ǔ': ['u', '3'],
+        'ù': ['u', '4'],
+        'ǖ': ['v', '1'],
+        'ǘ': ['v', '2'],
+        'ǚ': ['v', '3'],
+        'ǜ': ['v', '4'],
+        'ḿ': ['m', '2'],
+        'ń': ['n', '2'],
+        'ň': ['n', '3'],
+      }
+      let soft = true;
+      for (let i = 0; i < str.length; i++) {
+        if (str[i] in dict) {
+          let tmp = str[i] as keyof typeof dict;
+          ret = replaceAt(str, i, dict[tmp][0]);
+          ret += dict[tmp][1];
+          soft = false;
+          break;
+        }
+      }
+      if (soft) {
+        ret += '0';
+      }
+      return ret;
+    },
+
+    isValidatedWord(str: string) {
+      if ([...str].length != this.rules.length) {
+        return false;
+      }
+      for (let i = 0; i < [...str].length; i++) {
+        if (!(this.isValidatedChar([...str][i], this.rules[i]))) {
+          return false;
+        }
+      }
+      return true;
+    },
+    isValidatedChar(char: string, rule: CharRule) {
+      if (typeof rule === "string") {
+        return char == rule;
+      }
+      else {
+        if (rule.pronounce != null && !(this.isValidatedPronounce(char, rule.pronounce))) {
+          return false;
+        }
+        if (rule.strokes != null && !(this.isValidatedStrokes(char, rule.strokes))) {
+          return false;
+        }
+        return true;
+      }
+    },
+    isValidatedPronounce(char: string, pronounce: RegExp) {
+      if (!(char in this.dict)) return false;
+      for (let i = 0; i < this.dict[char].pinyin.length; i++) {
+        if (this.dict[char].pinyin[i].match(pronounce)) {
+          return true;
+        }
+      }
+      return false;
+    },
+    isValidatedStrokes(char: string, strokes: number) {
+      if (!(char in this.dict)) return false;
+      return this.dict[char].strokes == strokes;
     }
   }
 }
@@ -79,47 +199,102 @@ export default {
 
 <template>
   <div>
-    Nutri for Chinese words (Version 0.1):
+    Nutri for Chinese words (Version 0.2):
     <label for="text">
       <input v-model="text" />
     </label>
     <button @click="searchWords">search</button>
   </div>
   <div>
+    Findings:
     <ul>
       <li v-for="word in words">{{ word }}</li>
     </ul>
+    <p v-if="has_more">The above are first 100 results. Please give more restrictions if you don't find desired answer.
+    </p>
   </div>
   <div>
-    Rules:
+    Explanation:
     <ul>
-      <li>Every character should be embraced by {}.</li>
-      <li>The general pronouciation is given by pinyin but the tone is given by number (0 for light tone). For example,
+      <li>The tool is to find Chinese words with some restriction on pronunciation or stroke numbers.</li>
+      <li>Only <em>Simplified Chinese</em> is supported.</li>
+      <li>Every character description should be embraced by {}.</li>
+      <li>The general pronunciation is given by pinyin but the tone is given by number (0 for light tone). For example,
         “课” = ke4. You can use
         * to represent arbitrary number of characters and _ to represent one character.</li>
       <li>The possible second field in braces suggest the strokes number of character.</li>
-      <li>Only first 100 results are shown</li>
+      <li>Only first 100 results are shown.</li>
+      <li>The missing characters in Chinese character data (See Acknowledgements for the source) will not match any
+        pronunciation or stroke description.</li>
     </ul>
     Examples:
     <ul>
-      <li>{hun} {mi} => 昏迷</li>
-      <li>{yin} {d*4} => 印度 ...</li>
-      <li>{* 10} {* 12} {* 9} => 莫斯科 ...</li>
+      <li>{hun} {mi} => 昏迷 ……</li>
+      <li>印 {d*4} => 印度 ……</li>
+      <li>{* 10} {* 12} {* 9} => 莫斯科 ……</li>
     </ul>
   </div>
   <div>
     Acknowledgements:
     <ul>
-      <li>The Chinese character data (pronouciation and strokes) are from <a
+      <li>The Chinese character data (pronunciation and strokes) are from <a
           href="https://github.com/mapull/chinese-dictionary/">https://github.com/mapull/chinese-dictionary/</a>. (With
         some mistakes fixed)
       </li>
-      <li>The currently used word data are from <a
-          href="https://github.com/rime/rime-pinyin-simp/blob/master/pinyin_simp.dict.yaml">https://github.com/rime/rime-pinyin-simp/blob/master/pinyin_simp.dict.yaml</a>
-        containing 65120 words.
+      <li>The currently used word data are from <ul>
+          <li> <a
+              href="https://github.com/rime/rime-pinyin-simp/blob/master/pinyin_simp.dict.yaml">pinyin_simp.dict.yaml</a>
+          </li>
+          <li>
+            <a
+              href="https://github.com/rime/rime-luna-pinyin/blob/master/luna_pinyin.dict.yaml">luna_pinyin.dict.yaml</a>
+          </li>
+          <li>
+            <a
+              href="https://github.com/renyijiu/rime/blob/master/luna_pinyin.extended.dict.yaml">luna_pinyin.extended.dict.yaml</a>
+          </li>
+          <li>
+            <a
+              href="https://github.com/renyijiu/rime/blob/master/luna_pinyin.hanyu.dict.yaml">luna_pinyin.hanyu.dict.yaml</a>
+          </li>
+          <li>
+            <a
+              href="https://github.com/renyijiu/rime/blob/master/luna_pinyin.poetry.dict.yaml">luna_pinyin.poetry.dict.yaml</a>
+          </li>
+          <li>
+            <a
+              href="https://github.com/renyijiu/rime/blob/master/luna_pinyin.chengyusuyu.dict.yaml">luna_pinyin.chengyusuyu.dict.yaml</a>
+          </li>
+        </ul>
+        containing 513095 words(?).
       </li>
+      <li>
+        The Simplified-Traditional Chinese conversion is worked out by <a
+          href="https://github.com/BYVoid/OpenCC">OpenCC</a>.
+      </li>
+    </ul>
+  </div>
+  <div>
+    Update Note:
+    <ul>
+      <li>
+        Version 0.2:
+        <ul>
+          <li>
+            The word dictionary is expanded.
+          </li>
+          <li>
+            You can specify the character directly now.
+          </li>
+        </ul>
+      </li>
+      <li>Version 0.1: First published version.</li>
     </ul>
   </div>
 </template>
 
-<style></style>
+<style>
+em {
+  font-weight: bold;
+}
+</style>
