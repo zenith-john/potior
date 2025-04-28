@@ -86,7 +86,6 @@ export default {
     searchWords() {
       this.parse(this.text);
       this.words = [];
-      this.has_more = false;
       this.count = 0;
       for (let str of this.word_data) {
         if (this.isValidatedWord(str)) {
