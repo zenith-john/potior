@@ -22,7 +22,7 @@ export default {
       word_data: [] as string[],
       rules: [] as CharRule[],
       dict: {} as { [key: string]: { [key: string]: any } },
-      has_more: false
+      count: 1,
     }
   },
   mounted() {
@@ -87,16 +87,15 @@ export default {
       this.parse(this.text);
       this.words = [];
       this.has_more = false;
-      let count = 0;
+      this.count = 0;
       for (let str of this.word_data) {
         if (this.isValidatedWord(str)) {
-          if (count >= 100) {
-            this.has_more = true;
+          if (this.count >= 100) {
             break;
           }
           this.words.push(str);
           console.log(str.length);
-          count++;
+          this.count++;
         }
       }
     },
@@ -199,7 +198,7 @@ export default {
 
 <template>
   <div>
-    Nutri for Chinese words (Version 0.2):
+    Nutri for Chinese words (Version 0.2.1):
     <label for="text">
       <input v-model="text" />
     </label>
@@ -210,8 +209,9 @@ export default {
     <ul>
       <li v-for="word in words">{{ word }}</li>
     </ul>
-    <p v-if="has_more">The above are first 100 results. Please give more restrictions if you don't find desired answer.
+    <p v-if="count == 100">The above are first 100 results. Please give more restrictions if you don't find desired answer.
     </p>
+    <p v-else-if="count == 0">No result found.</p>
   </div>
   <div>
     Explanation:
@@ -277,6 +277,12 @@ export default {
   <div>
     Update Note:
     <ul>
+      <li>
+        Version 0.2.1:
+        <ul>
+          <li>Show information if no result is found.</li>
+        </ul>
+      </li>
       <li>
         Version 0.2:
         <ul>
